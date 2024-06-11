@@ -2,7 +2,7 @@
 OPTIMIZER: adam
 LOSS_FUNCTION: mae
 # Number of loops while training. Should be about 100, but usually see convergence around 70 epochs
-NUM_EPOCHS: 100 
+NUM_EPOCHS: 10 
 LEARNING_RATE: 1.e-3
 # Change this directory. Where the ML models + predictions data will be stored
 RESULT_DIR_PATH: ./src/data/results

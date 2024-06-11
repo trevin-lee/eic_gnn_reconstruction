@@ -1,5 +1,5 @@
 from multiprocessing        import Process, Queue, Manager, Value, set_start_method
-from typing                 import List, Dict, Tuple, Any
+from typing                 import Callable, Tuple, Any
 from sklearn.neighbors      import NearestNeighbors
 
 import numpy                as np
@@ -27,11 +27,13 @@ class DataPreprocessor:
         self, 
         config_loader: ConfigLoader, 
         file_list: list, 
-        folder_name: str
+        folder_name: str,
+        mask_function: Callable[[Any], Any]
     ):
         config = self.config = config_loader
         self.file_list = file_list
         self.folder_name = folder_name
+        self.mask_function = mask_function
         self.num_files = len(file_list)
 
         "Initialize logger for error warnings, and info"
@@ -43,14 +45,14 @@ class DataPreprocessor:
 
         self.logger = logging.getLogger(__name__)
         
-        means_file_path = self.config.STATS_DIR_PATH / 'means.p.gz'
-        stdvs_file_path = self.config.STATS_DIR_PATH / 'stdvs.p.gz'
+        means_file_path = self.config.OUTPUT_DIR_PATH / 'means.p.gz'
+        stdvs_file_path = self.config.OUTPUT_DIR_PATH / 'stdvs.p.gz'
 
         if os.path.exists(means_file_path) and os.path.exists(stdvs_file_path):
             self.logger.info(f"Using existing normalizer parameters")
-            with gzip.open(config.STATS_DIR_PATH / 'means.p.gz', 'rb') as means_file:
+            with gzip.open(config.OUTPUT_DIR_PATH / 'means.p.gz', 'rb') as means_file:
                 self.means_dict = pickle.load(means_file)
-            with gzip.open(config.STATS_DIR_PATH / 'stdvs.p.gz', 'rb') as stdvs_file:
+            with gzip.open(config.OUTPUT_DIR_PATH / 'stdvs.p.gz', 'rb') as stdvs_file:
                 self.stdvs_dict = pickle.load(stdvs_file)
         else:
             raise DataPreprocessorException("Normalizer stats do not exist")
@@ -331,11 +333,11 @@ class DataPreprocessor:
     """
 
     def _get_momentum(self, event_data, event_index) -> np.ndarray:
-        lambda_mask = (event_data["MCParticles.PDG"]==3122) & (event_data["MCParticles.generatorStatus"]==2)
+        mask = self.mask_function(event_data)
 
-        momentum_x = event_data['MCParticles.momentum.x'][lambda_mask][event_index, 0]
-        momentum_y = event_data['MCParticles.momentum.y'][lambda_mask][event_index, 0]
-        momentum_z = event_data['MCParticles.momentum.z'][lambda_mask][event_index, 0]
+        momentum_x = event_data['MCParticles.momentum.x'][mask][event_index, 0]
+        momentum_y = event_data['MCParticles.momentum.y'][mask][event_index, 0]
+        momentum_z = event_data['MCParticles.momentum.z'][mask][event_index, 0]
 
         momentum = np.log10(np.sqrt(momentum_x**2 + momentum_y**2 + momentum_z**2))
         momentum = (momentum - self.means_dict["momentum"]) / self.stdvs_dict["momentum"]
@@ -344,14 +346,11 @@ class DataPreprocessor:
 
 
     def _get_momentum_theta(self, event_data, event_index) -> Tuple[any, any]:
-        lambda_mask = (
-            (event_data["MCParticles.PDG"]==3122) & 
-            (event_data["MCParticles.generatorStatus"]==2)
-        )
+        mask = self.mask_function(event_data)
 
-        momentum_x = event_data['MCParticles.momentum.x'][lambda_mask][event_index, 0]
-        momentum_y = event_data['MCParticles.momentum.y'][lambda_mask][event_index, 0]
-        momentum_z = event_data['MCParticles.momentum.z'][lambda_mask][event_index, 0]
+        momentum_x = event_data['MCParticles.momentum.x'][mask][event_index, 0]
+        momentum_y = event_data['MCParticles.momentum.y'][mask][event_index, 0]
+        momentum_z = event_data['MCParticles.momentum.z'][mask][event_index, 0]
 
         momentum = np.sqrt(momentum_x**2 + momentum_y**2 + momentum_z**2)
         theta = np.arccos(momentum_z/momentum)*1000
@@ -364,20 +363,17 @@ class DataPreprocessor:
 
 
     def _get_momentum_theta_phi(self, event_data, event_index) -> Tuple[any, any, any]:
-        lambda_mask = (
-            (event_data["MCParticles.PDG"]==3122) & 
-            (event_data["MCParticles.generatorStatus"]==2)
-        )
+        mask = self.mask_function(event_data)
 
-        momentum_x = event_data['MCParticles.momentum.x'][lambda_mask][event_index, 0]
-        momentum_y = event_data['MCParticles.momentum.y'][lambda_mask][event_index, 0]
-        momentum_z = event_data['MCParticles.momentum.z'][lambda_mask][event_index, 0]
+        momentum_x = event_data['MCParticles.momentum.x'][mask][event_index, 0]
+        momentum_y = event_data['MCParticles.momentum.y'][mask][event_index, 0]
+        momentum_z = event_data['MCParticles.momentum.z'][mask][event_index, 0]
 
         momentum = np.sqrt(momentum_x**2 + momentum_y**2 + momentum_z**2)
         theta = np.arccos(momentum_z/momentum)*1000
-        phi=(np.arctan2(momentum_y, momentum_x))*(180/np.pi)
+        phi=(np.arctan2(momentum_y, momentum_x))*1000
 
-        momentum = np.log10(np.sqrt(momentum_x**2 + momentum_y**2 + momentum_z**2))
+        log_momentum = np.log10(np.sqrt(momentum_x**2 + momentum_y**2 + momentum_z**2))
         momentum = (momentum - self.means_dict["momentum"]) / self.stdvs_dict["momentum"]
         theta = (theta - self.means_dict["theta"]) / self.stdvs_dict["theta"]
         phi = (phi -self.means_dict["phi"]) / self.stdvs_dict["phi"]

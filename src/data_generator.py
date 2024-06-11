@@ -48,7 +48,7 @@ class DataGenerator:
             process.start()
             self.processes.append(process)
 
-        while self.processes_are_running or not batch_queue.empty():
+        while self.processes_are_running() or not batch_queue.empty():
             try:
                 batch = batch_queue.get(True, 0.001)
             except:
@@ -86,7 +86,6 @@ class DataGenerator:
                     batch_meta = []
 
             file_num += config.NUM_PROCESSES
-
 
         if len(batch_graphs) > 0:
             batch_queue.put((batch_graphs, batch_targets, batch_meta))
