@@ -134,7 +134,7 @@ class Model:
             training_mins = int((training_end - epoch_start)/60)
             training_secs = int((training_end - epoch_start)%60)
 
-            print('Epoch {} ended\nTraining: {:2d}:{:02d}\nValidation: {:2d}:{:02d}'. \
+            print('\nEpoch {} ended\nTraining: {:2d}:{:02d}\nValidation: {:2d}:{:02d}'. \
                 format(epoch, training_mins, training_secs, val_mins, val_secs))
 
             if np.mean(val_loss)<curr_loss:
@@ -374,3 +374,165 @@ class Model:
                 raise ModelException(
                     f"Unknown loss function: {config.LOSS_FUNCTION}"
                 )
+
+
+    def get_pred_3D(self, data_generator: DataGenerator, means_dict: dict, stdvs_dict: dict):
+        self._wrapped_val_step = self._create_wrapped_val_step(data_generator)
+
+        i = 1
+        test_loss = []
+        all_targets = []
+        all_outputs = []
+        all_targets_scaled = []
+        all_outputs_scaled = []
+        all_targets_scaled_ene = []
+        all_outputs_scaled_ene = []
+        all_targets_scaled_theta = []
+        all_outputs_scaled_theta = []
+        all_targets_scaled_phi = []
+        all_outputs_scaled_phi = []
+        all_meta = []
+        start = time.time()
+
+
+        for graph_data_test, targets_test, meta_test in self._get_batch(data_generator.generator()):
+            losses_test, output_test = self._val_step(graph_data_test, targets_test)
+
+            test_loss.append(losses_test.numpy())
+            targets_test = targets_test.numpy()
+            output_test = output_test.numpy()
+
+            output_test_scaled_ene = 10**(output_test[:,0]*stdvs_dict['momentum'] + means_dict['momentum'])
+            targets_test_scaled_ene = 10**(targets_test[:,0]*stdvs_dict['momentum'] + means_dict['momentum'])
+
+            output_test_scaled_theta = (output_test[:,1]*stdvs_dict['theta'] + means_dict['theta'])
+            targets_test_scaled_theta = (targets_test[:,1]*stdvs_dict['theta'] + means_dict['theta'])
+
+            output_test_scaled_phi = (output_test[:,2]*stdvs_dict['phi'] + means_dict['phi'])
+            targets_test_scaled_phi = (targets_test[:,2]*stdvs_dict['phi'] + means_dict['phi'])
+
+            all_targets.append(targets_test)
+            all_outputs.append(output_test)
+            all_meta.append(meta_test)
+
+            all_targets_scaled_ene.append(targets_test_scaled_ene)
+            all_outputs_scaled_ene.append(output_test_scaled_ene)
+
+            all_targets_scaled_theta.append(targets_test_scaled_theta)
+            all_outputs_scaled_theta.append(output_test_scaled_theta)
+
+            all_targets_scaled_phi.append(targets_test_scaled_phi)
+            all_outputs_scaled_phi.append(output_test_scaled_phi)
+
+        all_targets_scaled_theta=np.concatenate(all_targets_scaled_theta)
+        all_targets_scaled_ene=np.concatenate(all_targets_scaled_ene)
+        all_outputs_scaled_theta=np.concatenate(all_outputs_scaled_theta)
+        all_outputs_scaled_ene=np.concatenate(all_outputs_scaled_ene)
+        all_targets_scaled=np.vstack((all_targets_scaled_ene, all_targets_scaled_theta)).T
+        all_outputs_scaled=np.vstack((all_outputs_scaled_ene, all_outputs_scaled_theta)).T
+        all_meta = np.concatenate(all_meta)
+
+        return all_targets_scaled, all_outputs_scaled, all_targets, all_outputs, all_meta
+
+
+    def get_pred_2D(self, data_generator: DataGenerator, means_dict: dict, stdvs_dict: dict):
+        self._wrapped_val_step = self._create_wrapped_val_step(data_generator)
+
+        i = 1
+        test_loss = []
+        all_targets = []
+        all_outputs = []
+        all_targets_scaled = []
+        all_outputs_scaled = []
+        all_targets_scaled_ene = []
+        all_outputs_scaled_ene = []
+        all_targets_scaled_theta = []
+        all_outputs_scaled_theta = []
+        all_meta = []
+        start = time.time()
+
+
+        for graph_data_test, targets_test, meta_test in self._get_batch(data_generator.generator()):
+            losses_test, output_test = self._val_step(graph_data_test, targets_test)
+
+            test_loss.append(losses_test.numpy())
+            targets_test = targets_test.numpy()
+            output_test = output_test.numpy()
+
+            output_test_scaled_ene = 10**(output_test[:,0]*stdvs_dict['momentum'] + means_dict['momentum'])
+            targets_test_scaled_ene = 10**(targets_test[:,0]*stdvs_dict['momentum'] + means_dict['momentum'])
+
+            output_test_scaled_theta = (output_test[:,1]*stdvs_dict['theta'] + means_dict['theta'])
+            targets_test_scaled_theta = (targets_test[:,1]*stdvs_dict['theta'] + means_dict['theta'])
+
+            all_targets.append(targets_test)
+            all_outputs.append(output_test)
+            all_meta.append(meta_test)
+
+            all_targets_scaled_ene.append(targets_test_scaled_ene)
+            all_outputs_scaled_ene.append(output_test_scaled_ene)
+
+            all_targets_scaled_theta.append(targets_test_scaled_theta)
+            all_outputs_scaled_theta.append(output_test_scaled_theta)
+
+        all_targets_scaled_theta=np.concatenate(all_targets_scaled_theta)
+        all_targets_scaled_ene=np.concatenate(all_targets_scaled_ene)
+        all_outputs_scaled_theta=np.concatenate(all_outputs_scaled_theta)
+        all_outputs_scaled_ene=np.concatenate(all_outputs_scaled_ene)
+        all_targets_scaled=np.vstack((all_targets_scaled_ene, all_targets_scaled_theta)).T
+        all_outputs_scaled=np.vstack((all_outputs_scaled_ene, all_outputs_scaled_theta)).T
+        all_meta = np.concatenate(all_meta)
+
+        return all_targets_scaled, all_outputs_scaled, all_targets, all_outputs, all_meta
+
+
+    def get_pred_1D(self, data_generator: DataGenerator, means_dict: dict, stdvs_dict: dict):
+        self._wrapped_val_step = self._create_wrapped_val_step(data_generator)
+
+        i = 1
+        test_loss = []
+        all_targets = []
+        all_outputs = []
+        all_targets_scaled = []
+        all_outputs_scaled = []
+        all_meta = []
+        start = time.time()
+
+        for graph_data_test, targets_test, meta_test in self._get_batch(data_generator.generator()):
+            losses_test, output_test = self._val_step(graph_data_test, targets_test)
+            test_loss.append(losses_test.numpy())
+            targets_test = targets_test.numpy()
+            output_test = output_test.numpy().reshape(-1)
+
+            output_test_scaled = 10**(output_test*stdvs_dict['momentum'] + means_dict['momentum'])
+            targets_test_scaled = 10**(targets_test*stdvs_dict['momentum'] + means_dict['momentum'])
+
+
+            all_targets.append(targets_test)
+            all_outputs.append(output_test)
+            all_meta.append(meta_test)
+
+            all_targets_scaled.append(targets_test_scaled)
+            all_outputs_scaled.append(output_test_scaled)
+
+            if not (i)%100:
+                end = time.time()
+                print('Iter: {:03d}, Test_loss_curr: {:.4f}, Test_loss_mean: {:.4f}'. \
+                  format(i, test_loss[-1], np.mean(test_loss)), end='  ')
+                print('Took {:.3f} secs'.format(end-start))
+                start = time.time()
+
+            i += 1
+
+        end = time.time()
+        print('Iter: {:03d}, Test_loss_curr: {:.4f}, Test_loss_mean: {:.4f}'. \
+          format(i, test_loss[-1], np.mean(test_loss)), end='  ')
+        print('Took {:.3f} secs'.format(end-start))
+
+        epoch_end = time.time()
+        all_targets_scaled = np.concatenate(all_targets_scaled)
+        all_outputs_scaled = np.concatenate(all_outputs_scaled)
+        all_meta = np.concatenate(all_meta)
+
+        return all_targets_scaled, all_outputs_scaled, all_targets, all_outputs, all_meta
+    

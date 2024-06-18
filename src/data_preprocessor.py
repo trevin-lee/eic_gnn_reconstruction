@@ -1,4 +1,4 @@
-from multiprocessing        import Process, Queue, Manager, Value, set_start_method
+from multiprocessing        import Process, Value
 from typing                 import Callable, Tuple, Any
 from sklearn.neighbors      import NearestNeighbors
 
@@ -35,21 +35,12 @@ class DataPreprocessor:
         self.folder_name = folder_name
         self.mask_function = mask_function
         self.num_files = len(file_list)
-
-        "Initialize logger for error warnings, and info"
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-
-        self.logger = logging.getLogger(__name__)
         
         means_file_path = self.config.OUTPUT_DIR_PATH / 'means.p.gz'
         stdvs_file_path = self.config.OUTPUT_DIR_PATH / 'stdvs.p.gz'
 
         if os.path.exists(means_file_path) and os.path.exists(stdvs_file_path):
-            self.logger.info(f"Using existing normalizer parameters")
+            print("Using existing normalizer parameters")
             with gzip.open(config.OUTPUT_DIR_PATH / 'means.p.gz', 'rb') as means_file:
                 self.means_dict = pickle.load(means_file)
             with gzip.open(config.OUTPUT_DIR_PATH / 'stdvs.p.gz', 'rb') as stdvs_file:
@@ -58,10 +49,10 @@ class DataPreprocessor:
             raise DataPreprocessorException("Normalizer stats do not exist")
 
         if config.PREPROCESS_DATA is True:
-            self.logger.info(f"Preprocessing {folder_name} folder data")
+            print(f"Preprocessing {folder_name} folder data")
             self.data_preprocessor_manager()
         else:
-            self.logger.info(f"Using existing {folder_name} folder data")
+            print(f"Using existing {folder_name} folder data")
             self.processed_file_list = [
                 f"{config.OUTPUT_DIR_PATH}data_{file:03d}." 
                 for file in range(self.num_files)
@@ -95,8 +86,8 @@ class DataPreprocessor:
         progress_bar = tqdm.tqdm(total=self.num_files, desc="Preprocessing Data")
 
         while any(process.is_alive() for process in self.processes):
-                    progress_bar.n = counter.value
-                    progress_bar.refresh()
+            progress_bar.n = counter.value
+            progress_bar.refresh()
 
         progress_bar.close()
 

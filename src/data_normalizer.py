@@ -28,20 +28,12 @@ class DataNormalizer:
         self.folder_name = folder_name
         self.num_files = len(file_list)
 
-        "Initialize logger for error warnings, and info"
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-
-        self.logger = logging.getLogger(__name__)
         
         if config.CALC_NORMALIZER_STATS is True:
-            self.logger.info(f"Computing normalizer stats for {folder_name} folder")
+            print(f"Computing normalizer stats for {folder_name} folder")
             self.normalizer_manager(config.NORMALIZER_SAMPLE_SIZE)
         else:
-            self.logger.info(f"Opening normalizer stats for {folder_name} folder")
+            print(f"Opening normalizer stats for {folder_name} folder")
             with gzip.open(config.OUTPUT_DIR_PATH / 'means.p.gz', 'rb') as means_file:
                 self.means_dict = pickle.load(means_file)
             with gzip.open(config.OUTPUT_DIR_PATH / 'stdvs.p.gz', 'rb') as stdvs_file:
@@ -216,3 +208,13 @@ class DataNormalizer:
 
         means.append(file_means)
         stdevs.append(file_stdvs)
+
+
+    def get_normalizer_dicts(self):
+        config = self.config
+        with gzip.open(config.OUTPUT_DIR_PATH / 'means.p.gz', 'rb') as means_file:
+            means_dict = pickle.load(means_file)
+        with gzip.open(config.OUTPUT_DIR_PATH / 'stdvs.p.gz', 'rb') as stdvs_file:
+            stdvs_dict = pickle.load(stdvs_file)
+        
+        return means_dict, stdvs_dict
