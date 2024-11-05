@@ -1,1 +1,1 @@
-# Lambda0 Momentum & Angle Regression
+# GNN Momentum & Angle Regression
